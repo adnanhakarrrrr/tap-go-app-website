@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ export default function LoginScreen() {
   const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogin = async () => {
     if (!studentId.trim() || !password.trim()) {
@@ -126,6 +127,13 @@ export default function LoginScreen() {
 
           <Pressable>
             <Text style={styles.forgotPassword}>Forgot password?</Text>
+          </Pressable>
+
+          <Pressable onPress={() => router.push("/register")}>
+            <Text style={styles.registerLink}>
+              Don't have an account?{" "}
+              <Text style={styles.registerHighlight}>Register</Text>
+            </Text>
           </Pressable>
         </View>
 
@@ -256,5 +264,16 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     fontSize: 13,
     textAlign: "center",
+  },
+  registerLink: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "#6B7280",
+    marginTop: 14,
+  },
+
+  registerHighlight: {
+    color: "#2952D1",
+    fontWeight: "bold",
   },
 });
