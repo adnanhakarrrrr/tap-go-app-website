@@ -1,6 +1,7 @@
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   SafeAreaView,
@@ -8,6 +9,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -41,136 +43,67 @@ type Bus = {
 
 type DayKey = "Today" | "Tomorrow" | "Saturday" | "Sunday";
 
+const API_BASE =
+  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
+// example:
+// const API_BASE = "http://192.168.1.10/tapandgo_api";
+
 export default function BookRideScreen() {
   const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
 
+  const [searchText, setSearchText] = useState("");
+  const [buses, setBuses] = useState<Bus[]>([]);
+  const [loadingBuses, setLoadingBuses] = useState(false);
+  const [fetchError, setFetchError] = useState("");
+
   const dayOptions: DayKey[] = ["Today", "Tomorrow", "Saturday", "Sunday"];
-
-  const busDataByDay: Record<DayKey, Bus[]> = {
-    Today: [
-      {
-        id: 1,
-        busNumber: "BUS-101",
-        driverName: "Ali Hassan",
-        driverPhone: "03 123 456",
-        bookedSeats: 22,
-        capacity: 33,
-        isActive: true,
-        routeName: "Campus → Hamra → Downtown",
-        currentLocation: { latitude: 33.8938, longitude: 35.5018 },
-        routePath: [
-          { latitude: 33.8925, longitude: 35.4985 },
-          { latitude: 33.8938, longitude: 35.5018 },
-          { latitude: 33.8954, longitude: 35.5074 },
-          { latitude: 33.8972, longitude: 35.5124 },
-        ],
-        stops: [
-          { id: 1, name: "Campus Gate", latitude: 33.8925, longitude: 35.4985 },
-          { id: 2, name: "Bliss Stop", latitude: 33.8938, longitude: 35.5018 },
-          { id: 3, name: "Hamra Main", latitude: 33.8954, longitude: 35.5074 },
-          { id: 4, name: "Downtown", latitude: 33.8972, longitude: 35.5124 },
-        ],
-      },
-      {
-        id: 2,
-        busNumber: "BUS-204",
-        driverName: "Omar Khaled",
-        driverPhone: "71 222 333",
-        bookedSeats: 33,
-        capacity: 33,
-        isActive: true,
-        routeName: "Campus → Cola → Airport Road",
-        currentLocation: { latitude: 33.8866, longitude: 35.4954 },
-        routePath: [
-          { latitude: 33.8925, longitude: 35.4985 },
-          { latitude: 33.8907, longitude: 35.4948 },
-          { latitude: 33.8889, longitude: 35.4909 },
-          { latitude: 33.8866, longitude: 35.4954 },
-        ],
-        stops: [
-          { id: 5, name: "Campus Gate", latitude: 33.8925, longitude: 35.4985 },
-          { id: 6, name: "Cola Bridge", latitude: 33.8907, longitude: 35.4948 },
-          { id: 7, name: "Sabra Stop", latitude: 33.8889, longitude: 35.4909 },
-          {
-            id: 8,
-            name: "Airport Road",
-            latitude: 33.8866,
-            longitude: 35.4954,
-          },
-        ],
-      },
-      {
-        id: 3,
-        busNumber: "BUS-315",
-        driverName: "Hadi Nasser",
-        driverPhone: "70 444 555",
-        bookedSeats: 16,
-        capacity: 30,
-        isActive: true,
-        routeName: "Campus → Verdun → Raouche",
-        currentLocation: { latitude: 33.8899, longitude: 35.4838 },
-        routePath: [
-          { latitude: 33.8925, longitude: 35.4985 },
-          { latitude: 33.891, longitude: 35.4925 },
-          { latitude: 33.8901, longitude: 35.4875 },
-          { latitude: 33.8899, longitude: 35.4838 },
-        ],
-        stops: [
-          { id: 9, name: "Campus Gate", latitude: 33.8925, longitude: 35.4985 },
-          { id: 10, name: "Verdun", latitude: 33.891, longitude: 35.4925 },
-          {
-            id: 11,
-            name: "Ain El Tineh",
-            latitude: 33.8901,
-            longitude: 35.4875,
-          },
-          { id: 12, name: "Raouche", latitude: 33.8899, longitude: 35.4838 },
-        ],
-      },
-    ],
-    Tomorrow: [
-      {
-        id: 4,
-        busNumber: "BUS-401",
-        driverName: "Karim Saad",
-        driverPhone: "76 100 200",
-        bookedSeats: 12,
-        capacity: 28,
-        isActive: true,
-        routeName: "Campus → Jnah → Choueifat",
-        currentLocation: { latitude: 33.8708, longitude: 35.4833 },
-        routePath: [
-          { latitude: 33.8925, longitude: 35.4985 },
-          { latitude: 33.886, longitude: 35.491 },
-          { latitude: 33.8789, longitude: 35.486 },
-          { latitude: 33.8708, longitude: 35.4833 },
-        ],
-        stops: [
-          {
-            id: 13,
-            name: "Campus Gate",
-            latitude: 33.8925,
-            longitude: 35.4985,
-          },
-          { id: 14, name: "Jnah", latitude: 33.886, longitude: 35.491 },
-          { id: 15, name: "Ouzai", latitude: 33.8789, longitude: 35.486 },
-          { id: 16, name: "Choueifat", latitude: 33.8708, longitude: 35.4833 },
-        ],
-      },
-    ],
-    Saturday: [],
-    Sunday: [],
-  };
-
-  const buses = busDataByDay[selectedDay];
 
   const selectedBus = useMemo(() => {
     return buses.find((bus) => bus.id === selectedBusId) ?? null;
   }, [buses, selectedBusId]);
 
   const mapBuses = selectedBus ? [selectedBus] : buses;
+
+  const fetchBuses = async (day: DayKey, area: string = "") => {
+    try {
+      setLoadingBuses(true);
+      setFetchError("");
+
+      const url = `${API_BASE}/get_buses.php?day=${encodeURIComponent(day)}&area=${encodeURIComponent(area)}`;
+
+      const response = await fetch(url);
+      const text = await response.text();
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error("Server did not return valid JSON.");
+      }
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to load buses.");
+      }
+
+      setBuses(Array.isArray(data.buses) ? data.buses : []);
+    } catch (error: any) {
+      setBuses([]);
+      setFetchError(error?.message || "Could not load buses.");
+    } finally {
+      setLoadingBuses(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBuses(selectedDay, searchText);
+  }, [selectedDay]);
+
+  const handleSearch = async () => {
+    setSelectedBusId(null);
+    await fetchBuses(selectedDay, searchText.trim());
+  };
 
   const handleSelectBus = (bus: Bus) => {
     if (bus.bookedSeats >= bus.capacity) {
@@ -193,23 +126,26 @@ export default function BookRideScreen() {
     try {
       setLoadingBooking(true);
 
-      const response = await fetch(
-        "https://nonliturgic-lakenya-haggishly.ngrok-free.dev",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            student_id: 1,
-            bus_id: selectedBus.id,
-            booking_date: selectedDay,
-          }),
+      const response = await fetch(`${API_BASE}/book_ride.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          student_id: 1, // replace with logged-in student ID
+          bus_id: selectedBus.id,
+          booking_day: selectedDay,
+        }),
+      });
 
       const raw = await response.text();
-      const data = JSON.parse(raw);
+
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error("Booking response was not valid JSON.");
+      }
 
       if (data.success) {
         Alert.alert(
@@ -217,6 +153,7 @@ export default function BookRideScreen() {
           `Your seat on ${selectedBus.busNumber} has been booked successfully.`,
         );
         setSelectedBusId(null);
+        await fetchBuses(selectedDay, searchText.trim());
       } else {
         Alert.alert("Booking Failed", data.message || "Something went wrong.");
       }
@@ -227,6 +164,19 @@ export default function BookRideScreen() {
     }
   };
 
+  const initialMapRegion = {
+    latitude:
+      mapBuses[0]?.currentLocation?.latitude ??
+      buses[0]?.currentLocation?.latitude ??
+      33.8938,
+    longitude:
+      mapBuses[0]?.currentLocation?.longitude ??
+      buses[0]?.currentLocation?.longitude ??
+      35.5018,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
@@ -235,7 +185,7 @@ export default function BookRideScreen() {
         <View>
           <Text style={styles.headerTitle}>Book a Ride</Text>
           <Text style={styles.headerSubtitle}>
-            Choose a date, view routes, and pick a bus
+            Search nearest stop, view routes, and pick a bus
           </Text>
         </View>
 
@@ -272,6 +222,29 @@ export default function BookRideScreen() {
           })}
         </ScrollView>
 
+        <View style={styles.searchCard}>
+          <Text style={styles.sectionTitle}>Search by nearest area / stop</Text>
+          <Text style={styles.sectionSubtitle}>
+            Example: Hamra, Verdun, Downtown, Airport Road
+          </Text>
+
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Type nearest stop or area"
+              placeholderTextColor="#94A3B8"
+              value={searchText}
+              onChangeText={setSearchText}
+              returnKeyType="search"
+              onSubmitEditing={handleSearch}
+            />
+
+            <Pressable style={styles.searchButton} onPress={handleSearch}>
+              <Text style={styles.searchButtonText}>Search</Text>
+            </Pressable>
+          </View>
+        </View>
+
         <View style={styles.mapHeaderRow}>
           <View>
             <Text style={styles.sectionTitle}>Map</Text>
@@ -290,22 +263,16 @@ export default function BookRideScreen() {
         </View>
 
         <View style={styles.mapCard}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: 33.8938,
-              longitude: 35.5018,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }}
-          >
+          <MapView style={styles.map} initialRegion={initialMapRegion}>
             {mapBuses.map((bus) => (
               <React.Fragment key={bus.id}>
-                <Polyline
-                  coordinates={bus.routePath}
-                  strokeWidth={4}
-                  strokeColor="#2563EB"
-                />
+                {bus.routePath?.length > 0 && (
+                  <Polyline
+                    coordinates={bus.routePath}
+                    strokeWidth={4}
+                    strokeColor="#2563EB"
+                  />
+                )}
 
                 <Marker
                   coordinate={bus.currentLocation}
@@ -337,11 +304,21 @@ export default function BookRideScreen() {
           </Text>
         </View>
 
-        {buses.length === 0 ? (
+        {loadingBuses ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#1D4ED8" />
+            <Text style={styles.loadingText}>Loading buses...</Text>
+          </View>
+        ) : fetchError ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No buses available</Text>
+            <Text style={styles.emptyTitle}>Could not load buses</Text>
+            <Text style={styles.emptyText}>{fetchError}</Text>
+          </View>
+        ) : buses.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No buses found</Text>
             <Text style={styles.emptyText}>
-              There are no scheduled buses for {selectedDay}.
+              No buses matched your selected day or area search.
             </Text>
           </View>
         ) : (
@@ -497,6 +474,37 @@ const styles = StyleSheet.create({
   dayTabTextActive: {
     color: "#111827",
   },
+  searchCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+  },
+  searchRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: "#111827",
+    fontSize: 15,
+  },
+  searchButton: {
+    backgroundColor: "#1D4ED8",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
   mapHeaderRow: {
     marginBottom: 10,
     flexDirection: "row",
@@ -504,12 +512,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sectionTitle: {
-    color: "#FFFFFF",
+    color: "#111827",
     fontSize: 20,
     fontWeight: "800",
   },
   sectionSubtitle: {
-    color: "#AAB4C3",
+    color: "#6B7280",
     fontSize: 13,
     marginTop: 4,
   },
@@ -535,6 +543,17 @@ const styles = StyleSheet.create({
   },
   listHeader: {
     marginBottom: 10,
+  },
+  loadingCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#374151",
+    fontSize: 14,
   },
   emptyCard: {
     backgroundColor: "#FFFFFF",
