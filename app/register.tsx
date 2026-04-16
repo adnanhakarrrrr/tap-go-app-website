@@ -1,24 +1,79 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
+const API_BASE = "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
+// or local:
+// const API_BASE = "http://192.168.10.206/tapandgo_api";
+
 export default function RegisterScreen() {
-  const [studentId, setStudentId] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    console.log("Register pressed");
+  const handleRegister = async () => {
+    if (!fullName.trim() || !email.trim() || !phoneNumber.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert("Missing fields", "Please fill in all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Password mismatch", "Passwords do not match.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_BASE}/register.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          phone: phoneNumber,
+          password,
+        }),
+      });
+
+      const raw = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(`Server did not return valid JSON.\n${raw}`);
+      }
+
+      if (data.success) {
+        Alert.alert("Success", "Account created successfully.", [
+          {
+            text: "OK",
+            onPress: () => router.push("/"),
+          },
+        ]);
+      } else {
+        Alert.alert("Registration Failed", data.message || "Something went wrong.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "Could not register.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,15 +92,6 @@ export default function RegisterScreen() {
             Sign up to start booking your rides
           </Text>
 
-          <Text style={styles.label}>Student ID</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your student ID"
-            placeholderTextColor="#9CA3AF"
-            value={studentId}
-            onChangeText={setStudentId}
-          />
-
           <Text style={styles.label}>Full Name</Text>
           <TextInput
             style={styles.input}
@@ -53,6 +99,17 @@ export default function RegisterScreen() {
             placeholderTextColor="#9CA3AF"
             value={fullName}
             onChangeText={setFullName}
+          />
+
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
           />
 
           <Text style={styles.label}>Phone Number</Text>
@@ -86,10 +143,13 @@ export default function RegisterScreen() {
           />
 
           <TouchableOpacity
-            style={styles.registerButton}
+            style={[styles.registerButton, loading && { opacity: 0.7 }]}
             onPress={handleRegister}
+            disabled={loading}
           >
-            <Text style={styles.registerButtonText}>Register</Text>
+            <Text style={styles.registerButtonText}>
+              {loading ? "Registering..." : "Register"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push("/")}>
