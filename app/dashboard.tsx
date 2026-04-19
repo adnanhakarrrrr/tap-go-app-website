@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+
 import React, { useMemo, useState } from "react";
 import {
   Dimensions,
@@ -78,7 +79,7 @@ export default function DashboardScreen() {
 
           <View style={styles.balanceBox}>
             <Text style={styles.balanceLabel}>Credit Balance</Text>
-            <Text style={styles.balanceValue}>${balance}</Text>
+            <Text style={styles.balanceValue}>{balance} credits</Text>
           </View>
         </View>
 
@@ -119,7 +120,15 @@ export default function DashboardScreen() {
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
-                router.push("/book_ride");
+                router.push({
+                  pathname: "/book_ride",
+                  params: {
+                    studentId:
+                      typeof params.studentId === "string"
+                        ? params.studentId
+                        : "",
+                  },
+                });
               }}
             >
               <Text style={styles.menuItemText}>Book a Ride</Text>
@@ -150,7 +159,18 @@ export default function DashboardScreen() {
 
             <Pressable
               style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push({
+                  pathname: "/book_ride",
+                  params: {
+                    studentId:
+                      typeof params.studentId === "string"
+                        ? params.studentId
+                        : "",
+                  },
+                });
+              }}
             >
               <Text style={styles.menuItemText}>Book a Ride</Text>
             </Pressable>
@@ -171,7 +191,18 @@ export default function DashboardScreen() {
 
             <Pressable
               style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push({
+                  pathname: "/transaction_history",
+                  params: {
+                    studentId:
+                      typeof params.studentId === "string"
+                        ? params.studentId
+                        : "",
+                  },
+                });
+              }}
             >
               <Text style={styles.menuItemText}>Transaction History</Text>
             </Pressable>

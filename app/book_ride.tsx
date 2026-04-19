@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +13,8 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
+const params = useLocalSearchParams();
+const studentId = typeof params.studentId === "string" ? params.studentId : "1";
 
 type Stop = {
   id: number;
@@ -30,6 +32,7 @@ type Bus = {
   capacity: number;
   isActive: boolean;
   routeName: string;
+  ridePrice: number;
   currentLocation: {
     latitude: number;
     longitude: number;
@@ -45,8 +48,8 @@ type DayKey = "Today" | "Tomorrow" | "Saturday" | "Sunday";
 
 const API_BASE =
   "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
-// example:
-// const API_BASE = "http://192.168.1.10/tapandgo_api";
+
+const FIXED_RIDE_PRICE = 2;
 
 export default function BookRideScreen() {
   const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
@@ -87,7 +90,14 @@ export default function BookRideScreen() {
         throw new Error(data.message || "Failed to load buses.");
       }
 
-      setBuses(Array.isArray(data.buses) ? data.buses : []);
+      const fetchedBuses = Array.isArray(data.buses) ? data.buses : [];
+
+      setBuses(
+        fetchedBuses.map((bus: any) => ({
+          ...bus,
+          ridePrice: FIXED_RIDE_PRICE,
+        })),
+      );
     } catch (error: any) {
       setBuses([]);
       setFetchError(error?.message || "Could not load buses.");
@@ -132,9 +142,10 @@ export default function BookRideScreen() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          student_id: 1, // replace with logged-in student ID
+          student_id: Number(studentId),
           bus_id: selectedBus.id,
           booking_day: selectedDay,
+          ride_price: selectedBus.ridePrice,
         }),
       });
 
@@ -150,7 +161,7 @@ export default function BookRideScreen() {
       if (data.success) {
         Alert.alert(
           "Booking Confirmed",
-          `Your seat on ${selectedBus.busNumber} has been booked successfully.`,
+          `Your seat on ${selectedBus.busNumber} has been booked successfully for ${selectedBus.ridePrice} credits.`,
         );
         setSelectedBusId(null);
         await fetchBuses(selectedDay, searchText.trim());
@@ -374,6 +385,11 @@ export default function BookRideScreen() {
                 </View>
 
                 <View style={styles.infoBlock}>
+                  <Text style={styles.infoLabel}>Price</Text>
+                  <Text style={styles.infoValue}>{bus.ridePrice} credits</Text>
+                </View>
+
+                <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Stops</Text>
                   <Text style={styles.infoSubValue}>
                     {bus.stops.map((stop) => stop.name).join(" • ")}
@@ -394,6 +410,9 @@ export default function BookRideScreen() {
               <Text style={styles.selectedSummaryText}>
                 {selectedBus.bookedSeats}/{selectedBus.capacity} seats booked
               </Text>
+              <Text style={styles.selectedSummaryText}>
+                Price: {selectedBus.ridePrice} credits
+              </Text>
             </View>
 
             <Pressable
@@ -407,7 +426,7 @@ export default function BookRideScreen() {
               <Text style={styles.confirmButtonText}>
                 {loadingBooking
                   ? "Confirming..."
-                  : `Confirm Booking (${selectedBus.busNumber})`}
+                  : `Confirm Booking (${selectedBus.busNumber} • ${selectedBus.ridePrice} credits)`}
               </Text>
             </Pressable>
           </View>

@@ -46,14 +46,14 @@ export default function LoginScreen() {
       const data = JSON.parse(raw);
 
       if (data.success) {
-        const fullName = data.student.full_name || "Student";
-        const balance = data.student.credit_balance || "0.00";
+        const student = data.student || {};
 
         router.replace({
           pathname: "/dashboard",
           params: {
-            fullName,
-            balance: String(balance),
+            studentId: String(student.student_id ?? ""),
+            fullName: String(student.full_name ?? "Student"),
+            balance: String(student.credit_balance ?? "0.00"),
           },
         });
       } else {
