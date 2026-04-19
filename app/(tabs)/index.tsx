@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -30,11 +31,12 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await fetch(
-        "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api/login.php",
+        "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api/login.php",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
           },
           body: JSON.stringify({ studentId, password }),
         },
@@ -44,11 +46,17 @@ export default function LoginScreen() {
       console.log("RAW RESPONSE:", raw);
 
       const data = JSON.parse(raw);
-
+      console.log("LOGIN DATA:", data);
       if (data.success) {
+        console.log("LOGIN RESPONSE:", data);
+
         const fullName = data.student.full_name || "Student";
         const balance = data.student.credit_balance || "0.00";
 
+        // ✅ SAVE student ID (THIS FIXES YOUR BUG)
+        console.log("LOGIN DATA:", data);
+
+        await AsyncStorage.setItem("student_id", "1");
         router.replace({
           pathname: "/dashboard",
           params: {

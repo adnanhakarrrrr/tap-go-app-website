@@ -150,11 +150,27 @@ export default function DashboardScreen() {
 
             <Pressable
               style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
+              onPress={() => {
+                setMenuOpen(false);
+                setTimeout(() => {
+                  router.push("/book_ride");
+                }, 150);
+              }}
             >
               <Text style={styles.menuItemText}>Book a Ride</Text>
             </Pressable>
 
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                setTimeout(() => {
+                  router.push("/my-bookings");
+                }, 150);
+              }}
+            >
+              <Text style={styles.menuItemText}>My Bookings</Text>
+            </Pressable>
             <Pressable
               style={styles.menuItem}
               onPress={() => setMenuOpen(false)}

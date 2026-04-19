@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -43,12 +43,12 @@ type Bus = {
 
 type DayKey = "Today" | "Tomorrow" | "Saturday" | "Sunday";
 
-const API_BASE =
-  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
+const API_BASE = "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api";
 // example:
 // const API_BASE = "http://192.168.1.10/tapandgo_api";
 
 export default function BookRideScreen() {
+  const { studentId } = useLocalSearchParams();
   const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
@@ -73,7 +73,11 @@ export default function BookRideScreen() {
 
       const url = `${API_BASE}/get_buses.php?day=${encodeURIComponent(day)}&area=${encodeURIComponent(area)}`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
       const text = await response.text();
 
       let data: any;
@@ -130,9 +134,10 @@ export default function BookRideScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
-          student_id: 1, // replace with logged-in student ID
+          student_id: Number(studentId),
           bus_id: selectedBus.id,
           booking_day: selectedDay,
         }),
