@@ -31,7 +31,7 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await fetch(
-        "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api/login.php",
+        "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api/login.php",
         {
           method: "POST",
           headers: {
@@ -60,8 +60,9 @@ export default function LoginScreen() {
         router.replace({
           pathname: "/dashboard",
           params: {
-            fullName,
-            balance: String(balance),
+            studentId: String(data.student.student_id),
+            fullName: data.student.full_name,
+            balance: String(data.student.credit_balance),
           },
         });
       } else {
