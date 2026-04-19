@@ -1,7 +1,7 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   SafeAreaView,
@@ -27,61 +27,64 @@ type Booking = {
 
 type FilterType = "All" | "Upcoming" | "Past" | "Cancelled";
 
-export default function MyBookingsScreen() {
-  const [studentId, setStudentId] = useState<number | null>(null);
-  const [activeFilter, setActiveFilter] = useState<FilterType>("All");
+const API_BASE =
+  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 
+export default function MyBookingsScreen() {
+  const params = useLocalSearchParams();
+  const studentId =
+    typeof params.studentId === "string" ? Number(params.studentId) : 0;
+
+  const [activeFilter, setActiveFilter] = useState<FilterType>("All");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const loadStudentId = async () => {
-      const savedId = await AsyncStorage.getItem("student_id");
-      console.log("Loaded student_id:", savedId);
 
-      if (savedId) {
-        setStudentId(Number(savedId));
-      }
-    };
-
-    loadStudentId();
-  }, []);
   useEffect(() => {
-    if (!studentId) return;
+    if (!studentId) {
+      setLoading(false);
+      return;
+    }
 
     const fetchBookings = async () => {
       try {
-        const res = await fetch(
-          "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api/get_bookings.php",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true",
-            },
-            body: JSON.stringify({
-              student_id: studentId,
-            }),
+        const res = await fetch(`${API_BASE}/get_bookings.php`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
           },
-        );
+          body: JSON.stringify({
+            student_id: studentId,
+          }),
+        });
 
-        const data = await res.json();
+        const raw = await res.text();
+
+        let data: any;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          throw new Error("Bookings response was not valid JSON.");
+        }
 
         if (data.success) {
           const formatted = data.bookings.map((b: any) => ({
-            id: b.booking_id,
+            id: Number(b.booking_id),
             busNumber: b.bus_number,
             route: b.route_name,
             driverName: b.driver_name,
             driverPhone: b.driver_phone,
             date: b.booking_day,
             pickupStop: "N/A",
-            status: b.status,
+            status: b.status as BookingStatus,
           }));
 
           setBookings(formatted);
+        } else {
+          Alert.alert("Error", data.error || "Could not load bookings.");
         }
-      } catch (err) {
-        console.log(err);
+      } catch (err: any) {
+        Alert.alert("Error", err?.message || "Could not fetch bookings.");
       } finally {
         setLoading(false);
       }
@@ -117,43 +120,32 @@ export default function MyBookingsScreen() {
           text: "Yes, Cancel",
           style: "destructive",
           onPress: async () => {
-            console.log("CANCEL studentId:", studentId);
-            console.log("CANCEL bookingId:", bookingId);
-
             if (!studentId || !bookingId) {
-              Alert.alert(
-                "Error",
-                `Missing data: studentId=${studentId}, bookingId=${bookingId}`,
-              );
+              Alert.alert("Error", "Missing booking or student information.");
               return;
             }
-            console.log("CANCEL studentId:", studentId);
-            console.log("CANCEL bookingId:", bookingId);
 
-            if (!studentId || !bookingId) {
-              Alert.alert(
-                "Error",
-                `Missing data: studentId=${studentId}, bookingId=${bookingId}`,
-              );
-              return;
-            }
             try {
-              const res = await fetch(
-                "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api/cancel_booking.php",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "ngrok-skip-browser-warning": "true",
-                  },
-                  body: JSON.stringify({
-                    student_id: studentId,
-                    booking_id: bookingId,
-                  }),
+              const res = await fetch(`${API_BASE}/cancel_booking.php`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "ngrok-skip-browser-warning": "true",
                 },
-              );
+                body: JSON.stringify({
+                  student_id: studentId,
+                  booking_id: bookingId,
+                }),
+              });
 
-              const data = await res.json();
+              const raw = await res.text();
+
+              let data: any;
+              try {
+                data = JSON.parse(raw);
+              } catch {
+                throw new Error("Cancel response was not valid JSON.");
+              }
 
               if (data.success) {
                 setBookings((prevBookings) =>
@@ -176,6 +168,7 @@ export default function MyBookingsScreen() {
       ],
     );
   };
+
   const getStatusStyle = (status: BookingStatus) => {
     switch (status) {
       case "Confirmed":
@@ -248,7 +241,21 @@ export default function MyBookingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {filteredBookings.length === 0 ? (
+        {loading ? (
+          <View style={styles.emptyCard}>
+            <ActivityIndicator size="large" color="#1D4ED8" />
+            <Text style={[styles.emptyText, { marginTop: 12 }]}>
+              Loading bookings...
+            </Text>
+          </View>
+        ) : !studentId ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Student not found</Text>
+            <Text style={styles.emptyText}>
+              Please go back and log in again.
+            </Text>
+          </View>
+        ) : filteredBookings.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No bookings found</Text>
             <Text style={styles.emptyText}>

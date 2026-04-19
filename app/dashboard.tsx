@@ -135,9 +135,20 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Credits</Text>
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push({
+                  pathname: "/my-bookings",
+                  params: { studentId },
+                });
+              }}
+            >
+              <Text style={styles.menuItemText}>View Bookings</Text>
+            </Pressable>
             <Text style={styles.infoText}>
-              Monitor your balance and ride payments.
+              View all your current and past ride bookings.
             </Text>
           </View>
         </View>
@@ -166,6 +177,21 @@ export default function DashboardScreen() {
               }}
             >
               <Text style={styles.menuItemText}>Book a Ride</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuOpen(false);
+                setTimeout(() => {
+                  router.push({
+                    pathname: "/my-bookings",
+                    params: { studentId },
+                  });
+                }, 150);
+              }}
+            >
+              <Text style={styles.menuItemText}>View Bookings</Text>
             </Pressable>
 
             <Pressable
