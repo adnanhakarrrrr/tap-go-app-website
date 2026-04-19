@@ -134,59 +134,57 @@ const studentId =
   };
 
   const handleConfirmBooking = async () => {
-    body: JSON.stringify({
-  student_id: studentId,
-  bus_id: selectedBus.id,
-  booking_day: selectedDay,
-}),
-    }
+  if (!selectedBus) {
+    Alert.alert("No bus selected", "Please select a bus first.");
+    return;
+  }
 
-    if (!studentId) {
-      Alert.alert("Missing student ID", "Please log in again.");
-      return;
-    }
+  if (!studentId) {
+    Alert.alert("Missing student ID", "Please log in again.");
+    return;
+  }
 
+  try {
+    setLoadingBooking(true);
+
+    const response = await fetch(`${API_BASE}/book_ride.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
+      body: JSON.stringify({
+        student_id: studentId,
+        bus_id: selectedBus.id,
+        booking_day: selectedDay,
+      }),
+    });
+
+    const raw = await response.text();
+
+    let data: any;
     try {
-      setLoadingBooking(true);
-
-      const response = await fetch(`${API_BASE}/book_ride.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify({
-          student_id: Number(studentId),
-          bus_id: selectedBus.id,
-          booking_day: selectedDay,
-        }),
-      });
-
-      const raw = await response.text();
-
-      let data: any;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        throw new Error("Booking response was not valid JSON.");
-      }
-
-      if (data.success) {
-        Alert.alert(
-          "Booking Confirmed",
-          `Your seat on ${selectedBus.busNumber} has been booked successfully for ${selectedBus.ridePrice} credit.`,
-        );
-        setSelectedBusId(null);
-        await fetchBuses(selectedDay, searchText.trim());
-      } else {
-        Alert.alert("Booking Failed", data.message || "Something went wrong.");
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error?.message || "Could not confirm booking.");
-    } finally {
-      setLoadingBooking(false);
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error("Booking response was not valid JSON.");
     }
-  };
+
+    if (data.success) {
+      Alert.alert(
+        "Booking Confirmed",
+        `Your seat on ${selectedBus.busNumber} has been booked successfully for ${selectedBus.ridePrice} credit.`,
+      );
+      setSelectedBusId(null);
+      await fetchBuses(selectedDay, searchText.trim());
+    } else {
+      Alert.alert("Booking Failed", data.message || "Something went wrong.");
+    }
+  } catch (error: any) {
+    Alert.alert("Error", error?.message || "Could not confirm booking.");
+  } finally {
+    setLoadingBooking(false);
+  }
+};
 
   const initialMapRegion = {
     latitude:
