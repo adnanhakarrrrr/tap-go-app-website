@@ -24,6 +24,8 @@ export default function DashboardScreen() {
   }, [params.fullName]);
 
   const balance = typeof params.balance === "string" ? params.balance : "0.00";
+  const studentId =
+    typeof params.studentId === "string" ? params.studentId : "";
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -78,7 +80,7 @@ export default function DashboardScreen() {
 
           <View style={styles.balanceBox}>
             <Text style={styles.balanceLabel}>Credit Balance</Text>
-            <Text style={styles.balanceValue}>${balance}</Text>
+            <Text style={styles.balanceValue}>{balance} credits</Text>
           </View>
         </View>
 
@@ -119,7 +121,10 @@ export default function DashboardScreen() {
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
-                router.push("/book_ride");
+                router.push({
+                  pathname: "/book_ride",
+                  params: { studentId },
+                });
               }}
             >
               <Text style={styles.menuItemText}>Book a Ride</Text>
@@ -130,9 +135,9 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Balance</Text>
+            <Text style={styles.infoTitle}>Credits</Text>
             <Text style={styles.infoText}>
-              Monitor credits and ride payments.
+              Monitor your balance and ride payments.
             </Text>
           </View>
         </View>
@@ -153,7 +158,10 @@ export default function DashboardScreen() {
               onPress={() => {
                 setMenuOpen(false);
                 setTimeout(() => {
-                  router.push("/book_ride");
+                  router.push({
+                    pathname: "/book_ride",
+                    params: { studentId },
+                  });
                 }, 150);
               }}
             >
@@ -165,29 +173,12 @@ export default function DashboardScreen() {
               onPress={() => {
                 setMenuOpen(false);
                 setTimeout(() => {
-                  router.push("/my-bookings");
+                  router.push({
+                    pathname: "/transaction_history",
+                    params: { studentId },
+                  });
                 }, 150);
               }}
-            >
-              <Text style={styles.menuItemText}>My Bookings</Text>
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
-            >
-              <Text style={styles.menuItemText}>View Buses & Bus Riders</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
-            >
-              <Text style={styles.menuItemText}>View Balance</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
             >
               <Text style={styles.menuItemText}>Transaction History</Text>
             </Pressable>
