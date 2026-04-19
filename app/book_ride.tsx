@@ -50,7 +50,9 @@ const API_BASE =
 const FIXED_RIDE_PRICE = 1;
 
 export default function BookRideScreen() {
-  const { studentId } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+const studentId =
+  typeof params.studentId === "string" ? Number(params.studentId) : 0;
   const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
@@ -132,9 +134,11 @@ export default function BookRideScreen() {
   };
 
   const handleConfirmBooking = async () => {
-    if (!selectedBus) {
-      Alert.alert("No bus selected", "Please select a bus first.");
-      return;
+    body: JSON.stringify({
+  student_id: studentId,
+  bus_id: selectedBus.id,
+  booking_day: selectedDay,
+}),
     }
 
     if (!studentId) {

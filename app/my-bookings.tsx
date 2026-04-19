@@ -26,7 +26,9 @@ type Booking = {
 };
 
 type FilterType = "All" | "Upcoming" | "Past" | "Cancelled";
-
+const params = useLocalSearchParams();
+const studentId =
+  typeof params.studentId === "string" ? Number(params.studentId) : 0;
 const API_BASE =
   "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 
