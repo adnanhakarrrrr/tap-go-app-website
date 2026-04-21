@@ -194,10 +194,19 @@ export default function DashboardScreen() {
 
             <Pressable
               style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
+              onPress={() => {
+                setMenuOpen(false);
+                setTimeout(() => {
+                  router.push({
+                    pathname: "/transaction_history",
+                    params: { studentId },
+                  });
+                }, 150);
+              }}
             >
               <Text style={styles.menuItemText}>Transaction History</Text>
             </Pressable>
+
             <Pressable
               style={styles.menuItem}
               onPress={() => {
