@@ -11,8 +11,7 @@ import {
   View,
 } from "react-native";
 
-const API_BASE =
-  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
+const API_BASE = "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api";
 
 type TransactionItem = {
   id: number;

@@ -26,6 +26,9 @@ try {
     );
 
     $input = json_decode(file_get_contents("php://input"), true);
+    if (!$input) {
+    throw new Exception("Invalid JSON data.");
+}
 
     $fullName = trim($input["full_name"] ?? "");
     $email    = trim($input["email"] ?? "");
@@ -39,6 +42,9 @@ try {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         throw new Exception("Invalid email address.");
     }
+if (strlen($password) < 6) {
+        throw new Exception("Password must be at least 6 characters long.");
+    }
 
     $checkStmt = $pdo->prepare("SELECT student_id FROM student WHERE email = :email LIMIT 1");
     $checkStmt->execute([":email" => $email]);
@@ -46,7 +52,7 @@ try {
     if ($checkStmt->fetch()) {
         throw new Exception("This email is already registered.");
     }
-
+ 
     $insertStmt = $pdo->prepare("
         INSERT INTO student (full_name, email, password, phone, credit_balance, card_id)
         VALUES (:full_name, :email, :password, :phone, 0.00, NULL)

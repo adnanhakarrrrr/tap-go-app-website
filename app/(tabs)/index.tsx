@@ -31,7 +31,7 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await fetch(
-        "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api/login.php",
+        "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api/login.php",
         {
           method: "POST",
           headers: {
@@ -56,7 +56,10 @@ export default function LoginScreen() {
         // ✅ SAVE student ID (THIS FIXES YOUR BUG)
         console.log("LOGIN DATA:", data);
 
-        await AsyncStorage.setItem("student_id", "1");
+        await AsyncStorage.setItem(
+          "student_id",
+          String(data.student.student_id),
+        );
         router.replace({
           pathname: "/dashboard",
           params: {

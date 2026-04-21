@@ -16,7 +16,8 @@ const { width } = Dimensions.get("window");
 
 export default function DashboardScreen() {
   const params = useLocalSearchParams();
-
+  const studentId =
+    typeof params.studentId === "string" ? params.studentId : "";
   const firstName = useMemo(() => {
     const fullName =
       typeof params.fullName === "string" ? params.fullName : "Student";
@@ -24,8 +25,6 @@ export default function DashboardScreen() {
   }, [params.fullName]);
 
   const balance = typeof params.balance === "string" ? params.balance : "0.00";
-  const studentId =
-    typeof params.studentId === "string" ? params.studentId : "";
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -80,7 +79,7 @@ export default function DashboardScreen() {
 
           <View style={styles.balanceBox}>
             <Text style={styles.balanceLabel}>Credit Balance</Text>
-            <Text style={styles.balanceValue}>{balance} credits</Text>
+            <Text style={styles.balanceValue}>${balance}</Text>
           </View>
         </View>
 
@@ -121,10 +120,7 @@ export default function DashboardScreen() {
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
-                router.push({
-                  pathname: "/book_ride",
-                  params: { studentId },
-                });
+                router.push("/book_ride");
               }}
             >
               <Text style={styles.menuItemText}>Book a Ride</Text>
@@ -135,20 +131,9 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.infoCard}>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
-                router.push({
-                  pathname: "/my-bookings",
-                  params: { studentId },
-                });
-              }}
-            >
-              <Text style={styles.menuItemText}>View Bookings</Text>
-            </Pressable>
+            <Text style={styles.infoTitle}>Balance</Text>
             <Text style={styles.infoText}>
-              View all your current and past ride bookings.
+              Monitor credits and ride payments.
             </Text>
           </View>
         </View>
@@ -191,22 +176,41 @@ export default function DashboardScreen() {
                 }, 150);
               }}
             >
-              <Text style={styles.menuItemText}>View Bookings</Text>
+              <Text style={styles.menuItemText}>My Bookings</Text>
+            </Pressable>
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => setMenuOpen(false)}
+            >
+              <Text style={styles.menuItemText}>View Buses & Bus Riders</Text>
             </Pressable>
 
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => setMenuOpen(false)}
+            >
+              <Text style={styles.menuItemText}>View Balance</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => setMenuOpen(false)}
+            >
+              <Text style={styles.menuItemText}>Transaction History</Text>
+            </Pressable>
             <Pressable
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
                 setTimeout(() => {
                   router.push({
-                    pathname: "/transaction_history",
+                    pathname: "/profile",
                     params: { studentId },
                   });
                 }, 150);
               }}
             >
-              <Text style={styles.menuItemText}>Transaction History</Text>
+              <Text style={styles.menuItemText}>Profile</Text>
             </Pressable>
 
             <Pressable style={styles.menuItemLogout} onPress={handleLogout}>

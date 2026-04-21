@@ -44,15 +44,14 @@ type Bus = {
 
 type DayKey = "Today" | "Tomorrow" | "Saturday" | "Sunday";
 
-const API_BASE =
-  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
+const API_BASE = "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api";
 
 const FIXED_RIDE_PRICE = 1;
 
 export default function BookRideScreen() {
   const params = useLocalSearchParams();
-const studentId =
-  typeof params.studentId === "string" ? Number(params.studentId) : 0;
+  const studentId =
+    typeof params.studentId === "string" ? Number(params.studentId) : 0;
   const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
@@ -134,57 +133,57 @@ const studentId =
   };
 
   const handleConfirmBooking = async () => {
-  if (!selectedBus) {
-    Alert.alert("No bus selected", "Please select a bus first.");
-    return;
-  }
+    if (!selectedBus) {
+      Alert.alert("No bus selected", "Please select a bus first.");
+      return;
+    }
 
-  if (!studentId) {
-    Alert.alert("Missing student ID", "Please log in again.");
-    return;
-  }
+    if (!studentId) {
+      Alert.alert("Missing student ID", "Please log in again.");
+      return;
+    }
 
-  try {
-    setLoadingBooking(true);
-
-    const response = await fetch(`${API_BASE}/book_ride.php`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-      },
-      body: JSON.stringify({
-        student_id: studentId,
-        bus_id: selectedBus.id,
-        booking_day: selectedDay,
-      }),
-    });
-
-    const raw = await response.text();
-
-    let data: any;
     try {
-      data = JSON.parse(raw);
-    } catch {
-      throw new Error("Booking response was not valid JSON.");
-    }
+      setLoadingBooking(true);
 
-    if (data.success) {
-      Alert.alert(
-        "Booking Confirmed",
-        `Your seat on ${selectedBus.busNumber} has been booked successfully for ${selectedBus.ridePrice} credit.`,
-      );
-      setSelectedBusId(null);
-      await fetchBuses(selectedDay, searchText.trim());
-    } else {
-      Alert.alert("Booking Failed", data.message || "Something went wrong.");
+      const response = await fetch(`${API_BASE}/book_ride.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({
+          student_id: studentId,
+          bus_id: selectedBus.id,
+          booking_day: selectedDay,
+        }),
+      });
+
+      const raw = await response.text();
+
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error("Booking response was not valid JSON.");
+      }
+
+      if (data.success) {
+        Alert.alert(
+          "Booking Confirmed",
+          `Your seat on ${selectedBus.busNumber} has been booked successfully for ${selectedBus.ridePrice} credit.`,
+        );
+        setSelectedBusId(null);
+        await fetchBuses(selectedDay, searchText.trim());
+      } else {
+        Alert.alert("Booking Failed", data.message || "Something went wrong.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "Could not confirm booking.");
+    } finally {
+      setLoadingBooking(false);
     }
-  } catch (error: any) {
-    Alert.alert("Error", error?.message || "Could not confirm booking.");
-  } finally {
-    setLoadingBooking(false);
-  }
-};
+  };
 
   const initialMapRegion = {
     latitude:
