@@ -79,7 +79,7 @@ export default function DashboardScreen() {
 
           <View style={styles.balanceBox}>
             <Text style={styles.balanceLabel}>Credit Balance</Text>
-            <Text style={styles.balanceValue}>${balance}</Text>
+            <Text style={styles.balanceValue}>{balance} credits</Text>
           </View>
         </View>
 
@@ -177,19 +177,6 @@ export default function DashboardScreen() {
               }}
             >
               <Text style={styles.menuItemText}>My Bookings</Text>
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
-            >
-              <Text style={styles.menuItemText}>View Buses & Bus Riders</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => setMenuOpen(false)}
-            >
-              <Text style={styles.menuItemText}>View Balance</Text>
             </Pressable>
 
             <Pressable
