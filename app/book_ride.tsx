@@ -51,8 +51,8 @@ const FIXED_RIDE_PRICE = 1;
 
 export default function BookRideScreen() {
   const params = useLocalSearchParams();
-const studentId =
-  typeof params.studentId === "string" ? Number(params.studentId) : 0;
+  const studentId =
+    typeof params.studentId === "string" ? Number(params.studentId) : 0;
   const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
@@ -134,11 +134,9 @@ const studentId =
   };
 
   const handleConfirmBooking = async () => {
-    body: JSON.stringify({
-  student_id: studentId,
-  bus_id: selectedBus.id,
-  booking_day: selectedDay,
-}),
+    if (!selectedBus) {
+      Alert.alert("No bus selected", "Please select a bus first.");
+      return;
     }
 
     if (!studentId) {
@@ -156,7 +154,7 @@ const studentId =
           "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
-          student_id: Number(studentId),
+          student_id: studentId,
           bus_id: selectedBus.id,
           booking_day: selectedDay,
         }),

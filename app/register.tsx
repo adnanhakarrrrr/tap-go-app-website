@@ -11,7 +11,8 @@ import {
   View,
 } from "react-native";
 
-const API_BASE = "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
+const API_BASE =
+  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 // or local:
 // const API_BASE = "http://192.168.10.206/tapandgo_api";
 
@@ -24,7 +25,13 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!fullName.trim() || !email.trim() || !phoneNumber.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (
+      !fullName.trim() ||
+      !email.trim() ||
+      !phoneNumber.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim()
+    ) {
       Alert.alert("Missing fields", "Please fill in all fields.");
       return;
     }
@@ -67,7 +74,10 @@ export default function RegisterScreen() {
           },
         ]);
       } else {
-        Alert.alert("Registration Failed", data.message || "Something went wrong.");
+        Alert.alert(
+          "Registration Failed",
+          data.message || "Something went wrong.",
+        );
       }
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Could not register.");
