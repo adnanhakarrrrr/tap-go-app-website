@@ -56,7 +56,10 @@ export default function LoginScreen() {
         // ✅ SAVE student ID (THIS FIXES YOUR BUG)
         console.log("LOGIN DATA:", data);
 
-        await AsyncStorage.setItem("student_id", "1");
+        await AsyncStorage.setItem(
+          "student_id",
+          String(data.student.student_id),
+        );
         router.replace({
           pathname: "/dashboard",
           params: {
@@ -133,8 +136,7 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>Login</Text>
             )}
           </Pressable>
-
-          <Pressable>
+          <Pressable onPress={() => router.push("/forgot_password" as any)}>
             <Text style={styles.forgotPassword}>Forgot password?</Text>
           </Pressable>
 
