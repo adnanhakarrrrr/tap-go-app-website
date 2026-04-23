@@ -44,7 +44,8 @@ type Bus = {
 
 type DayKey = "Today" | "Tomorrow" | "Saturday" | "Sunday";
 
-const API_BASE = "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api";
+const API_BASE =
+  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 
 const FIXED_RIDE_PRICE = 1;
 

@@ -11,7 +11,8 @@ import {
   View,
 } from "react-native";
 
-const API_BASE = "https://swarm-july-shiftless.ngrok-free.dev/tapandgo_api";
+const API_BASE =
+  "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 // or local:
 // const API_BASE = "http://192.168.10.206/tapandgo_api";
 
