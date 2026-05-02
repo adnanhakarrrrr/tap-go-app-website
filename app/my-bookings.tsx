@@ -21,19 +21,56 @@ type Booking = {
   driverName: string;
   driverPhone: string;
   date: string;
+  routeStartTime: string;
+  routeEndTime: string;
   pickupStop: string;
+  estimatedPickupTime: string;
   status: BookingStatus;
 };
 
 type FilterType = "All" | "Upcoming" | "Past" | "Cancelled";
-const params = useLocalSearchParams();
-const studentId =
-  typeof params.studentId === "string" ? Number(params.studentId) : 0;
+
 const API_BASE =
   "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 
+const formatReadableDate = (value: string) => {
+  if (!value) {
+    return "N/A";
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatTime = (value?: string | null) => {
+  if (!value) {
+    return "--:--";
+  }
+
+  const cleanValue = String(value).slice(0, 5);
+
+  if (!/^\d{2}:\d{2}$/.test(cleanValue)) {
+    return "--:--";
+  }
+
+  return cleanValue;
+};
+
 export default function MyBookingsScreen() {
   const params = useLocalSearchParams();
+
   const studentId =
     typeof params.studentId === "string" ? Number(params.studentId) : 0;
 
@@ -49,6 +86,8 @@ export default function MyBookingsScreen() {
 
     const fetchBookings = async () => {
       try {
+        setLoading(true);
+
         const res = await fetch(`${API_BASE}/get_bookings.php`, {
           method: "POST",
           headers: {
@@ -63,6 +102,7 @@ export default function MyBookingsScreen() {
         const raw = await res.text();
 
         let data: any;
+
         try {
           data = JSON.parse(raw);
         } catch {
@@ -76,8 +116,13 @@ export default function MyBookingsScreen() {
             route: b.route_name,
             driverName: b.driver_name,
             driverPhone: b.driver_phone,
-            date: b.booking_day,
-            pickupStop: "N/A",
+            date: b.booking_date,
+            routeStartTime: formatTime(b.routeStartTime || b.route_start_time),
+            routeEndTime: formatTime(b.routeEndTime || b.route_end_time),
+            pickupStop: b.stop_name || "N/A",
+            estimatedPickupTime: formatTime(
+              b.estimatedPickupTime || b.estimated_pickup_time,
+            ),
             status: b.status as BookingStatus,
           }));
 
@@ -96,16 +141,21 @@ export default function MyBookingsScreen() {
   }, [studentId]);
 
   const filteredBookings = useMemo(() => {
-    if (activeFilter === "All") return bookings;
+    if (activeFilter === "All") {
+      return bookings;
+    }
+
     if (activeFilter === "Upcoming") {
       return bookings.filter(
         (booking) =>
           booking.status === "Confirmed" || booking.status === "Pending",
       );
     }
+
     if (activeFilter === "Past") {
       return bookings.filter((booking) => booking.status === "Completed");
     }
+
     return bookings.filter((booking) => booking.status === "Cancelled");
   }, [activeFilter, bookings]);
 
@@ -143,6 +193,7 @@ export default function MyBookingsScreen() {
               const raw = await res.text();
 
               let data: any;
+
               try {
                 data = JSON.parse(raw);
               } catch {
@@ -246,6 +297,7 @@ export default function MyBookingsScreen() {
         {loading ? (
           <View style={styles.emptyCard}>
             <ActivityIndicator size="large" color="#1D4ED8" />
+
             <Text style={[styles.emptyText, { marginTop: 12 }]}>
               Loading bookings...
             </Text>
@@ -253,6 +305,7 @@ export default function MyBookingsScreen() {
         ) : !studentId ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>Student not found</Text>
+
             <Text style={styles.emptyText}>
               Please go back and log in again.
             </Text>
@@ -260,14 +313,14 @@ export default function MyBookingsScreen() {
         ) : filteredBookings.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No bookings found</Text>
+
             <Text style={styles.emptyText}>
               There are no bookings in this category yet.
             </Text>
           </View>
         ) : (
           filteredBookings.map((booking) => {
-            const canCancel =
-              booking.status === "Confirmed" || booking.status === "Pending";
+            const canCancel = booking.status === "Pending";
 
             return (
               <View key={booking.id} style={styles.bookingCard}>
@@ -290,6 +343,18 @@ export default function MyBookingsScreen() {
 
                 <Text style={styles.routeText}>{booking.route}</Text>
 
+                <View style={styles.timeBox}>
+                  <Text style={styles.timeLabel}>Route Time</Text>
+
+                  <Text style={styles.timeValue}>
+                    {booking.routeStartTime} - {booking.routeEndTime}
+                  </Text>
+
+                  <Text style={styles.timeSubValue}>
+                    Estimated pickup: {booking.estimatedPickupTime}
+                  </Text>
+                </View>
+
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Driver</Text>
                   <Text style={styles.infoValue}>{booking.driverName}</Text>
@@ -298,11 +363,15 @@ export default function MyBookingsScreen() {
 
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Date</Text>
-                  <Text style={styles.infoValue}>{booking.date}</Text>
+
+                  <Text style={styles.infoValue}>
+                    {formatReadableDate(booking.date)}
+                  </Text>
                 </View>
 
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Pickup Stop</Text>
+
                   <Text style={styles.infoValue}>{booking.pickupStop}</Text>
                 </View>
 
@@ -312,7 +381,15 @@ export default function MyBookingsScreen() {
                     onPress={() =>
                       Alert.alert(
                         booking.busNumber,
-                        `Route: ${booking.route}\nDriver: ${booking.driverName}\nPhone: ${booking.driverPhone}\nDate: ${booking.date}\nPickup: ${booking.pickupStop}\nStatus: ${booking.status}`,
+                        `Route: ${booking.route}\nDriver: ${
+                          booking.driverName
+                        }\nPhone: ${booking.driverPhone}\nDate: ${formatReadableDate(
+                          booking.date,
+                        )}\nRoute time: ${booking.routeStartTime} - ${
+                          booking.routeEndTime
+                        }\nPickup: ${booking.pickupStop}\nEstimated pickup: ${
+                          booking.estimatedPickupTime
+                        }\nStatus: ${booking.status}`,
                       )
                     }
                   >
@@ -446,7 +523,30 @@ const styles = StyleSheet.create({
   routeText: {
     fontSize: 16,
     color: "#6B7280",
-    marginBottom: 18,
+    marginBottom: 14,
+  },
+  timeBox: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+  timeLabel: {
+    color: "#1D4ED8",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  timeValue: {
+    color: "#111827",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  timeSubValue: {
+    color: "#374151",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 5,
   },
   statusBadge: {
     borderRadius: 999,

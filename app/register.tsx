@@ -25,18 +25,34 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
+    const cleanFullName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phoneNumber.trim();
+    const cleanPassword = password.trim();
+    const cleanConfirmPassword = confirmPassword.trim();
+
     if (
-      !fullName.trim() ||
-      !email.trim() ||
-      !phoneNumber.trim() ||
-      !password.trim() ||
-      !confirmPassword.trim()
+      !cleanFullName ||
+      !cleanEmail ||
+      !cleanPhone ||
+      !cleanPassword ||
+      !cleanConfirmPassword
     ) {
       Alert.alert("Missing fields", "Please fill in all fields.");
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (!cleanEmail.includes("@")) {
+      Alert.alert("Invalid email", "Please enter a valid email address.");
+      return;
+    }
+
+    if (cleanPassword.length < 6) {
+      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      return;
+    }
+
+    if (cleanPassword !== cleanConfirmPassword) {
       Alert.alert("Password mismatch", "Passwords do not match.");
       return;
     }
@@ -48,18 +64,20 @@ export default function RegisterScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
-          full_name: fullName,
-          email,
-          phone: phoneNumber,
-          password,
+          full_name: cleanFullName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          password: cleanPassword,
         }),
       });
 
       const raw = await response.text();
 
-      let data;
+      let data: any;
+
       try {
         data = JSON.parse(raw);
       } catch {
@@ -67,18 +85,30 @@ export default function RegisterScreen() {
       }
 
       if (data.success) {
-        Alert.alert("Success", "Account created successfully.", [
-          {
-            text: "OK",
-            onPress: () => router.push("/"),
-          },
-        ]);
-      } else {
         Alert.alert(
-          "Registration Failed",
-          data.message || "Something went wrong.",
+          "Account Created",
+          data.message || "Please check your email for the verification code.",
+          [
+            {
+              text: "OK",
+              onPress: () =>
+                router.replace({
+                  pathname: "/verify_email",
+                  params: {
+                    email: cleanEmail,
+                  },
+                }),
+            },
+          ],
         );
+
+        return;
       }
+
+      Alert.alert(
+        "Registration Failed",
+        data.message || "Something went wrong.",
+      );
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Could not register.");
     } finally {

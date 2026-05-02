@@ -19,6 +19,14 @@ type Stop = {
   name: string;
   latitude: number;
   longitude: number;
+  order?: number;
+  stop_order?: number;
+  estimatedArrivalTime?: string;
+  estimated_arrival_time?: string;
+  estimatedDrivingMinutes?: number;
+  estimated_driving_minutes?: number;
+  waitMinutesBeforeStop?: number;
+  wait_minutes_before_stop?: number;
 };
 
 type Bus = {
@@ -31,9 +39,12 @@ type Bus = {
   isActive: boolean;
   routeName: string;
   ridePrice: number;
+  availableDate?: string;
+  routeStartTime?: string;
+  routeEndTime?: string;
   currentLocation: {
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
   };
   routePath: {
     latitude: number;
@@ -42,18 +53,176 @@ type Bus = {
   stops: Stop[];
 };
 
-type DayKey = "Today" | "Tomorrow" | "Saturday" | "Sunday";
+type DateOption = {
+  label: string;
+  value: string;
+};
 
 const API_BASE =
   "https://nonliturgic-lakenya-haggishly.ngrok-free.dev/tapandgo_api";
 
 const FIXED_RIDE_PRICE = 1;
+const STOP_WAIT_MINUTES = 5;
+
+const formatDateValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const formatReadableDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatTime = (value?: string | null) => {
+  if (!value) {
+    return "--:--";
+  }
+
+  const cleanValue = String(value).slice(0, 5);
+
+  if (!/^\d{2}:\d{2}$/.test(cleanValue)) {
+    return "--:--";
+  }
+
+  return cleanValue;
+};
+
+const buildDateOptions = (): DateOption[] => {
+  const today = new Date();
+
+  return Array.from({ length: 14 }).map((_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+
+    const value = formatDateValue(date);
+
+    let label = date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+
+    if (index === 0) {
+      label = "Today";
+    }
+
+    if (index === 1) {
+      label = "Tomorrow";
+    }
+
+    return {
+      label,
+      value,
+    };
+  });
+};
+
+const normalizeBus = (bus: any): Bus => {
+  return {
+    id: Number(bus.id),
+    busNumber: bus.busNumber || bus.bus_number || "",
+    driverName: bus.driverName || bus.driver_name || "",
+    driverPhone: bus.driverPhone || bus.driver_phone || "",
+    bookedSeats: Number(bus.bookedSeats ?? bus.booked_seats ?? 0),
+    capacity: Number(bus.capacity ?? 0),
+    isActive: Boolean(bus.isActive ?? Number(bus.is_active)),
+    routeName: bus.routeName || bus.route_name || "",
+    ridePrice: FIXED_RIDE_PRICE,
+    availableDate: bus.availableDate || bus.available_date || "",
+    routeStartTime: formatTime(bus.routeStartTime || bus.route_start_time),
+    routeEndTime: formatTime(bus.routeEndTime || bus.route_end_time),
+    currentLocation: {
+      latitude:
+        bus.currentLocation?.latitude ??
+        (bus.current_latitude !== undefined && bus.current_latitude !== null
+          ? Number(bus.current_latitude)
+          : null),
+      longitude:
+        bus.currentLocation?.longitude ??
+        (bus.current_longitude !== undefined && bus.current_longitude !== null
+          ? Number(bus.current_longitude)
+          : null),
+    },
+    routePath: Array.isArray(bus.routePath)
+      ? bus.routePath.map((point: any) => ({
+          latitude: Number(point.latitude),
+          longitude: Number(point.longitude),
+        }))
+      : Array.isArray(bus.route_path)
+        ? bus.route_path.map((point: any) => ({
+            latitude: Number(point.latitude),
+            longitude: Number(point.longitude),
+          }))
+        : [],
+    stops: Array.isArray(bus.stops)
+      ? bus.stops.map((stop: any) => ({
+          id: Number(stop.id),
+          name: stop.name || "",
+          latitude: Number(stop.latitude),
+          longitude: Number(stop.longitude),
+          order: Number(stop.order ?? stop.stop_order ?? 0),
+          stop_order: Number(stop.stop_order ?? stop.order ?? 0),
+          estimatedArrivalTime: formatTime(
+            stop.estimatedArrivalTime || stop.estimated_arrival_time,
+          ),
+          estimated_arrival_time: formatTime(
+            stop.estimated_arrival_time || stop.estimatedArrivalTime,
+          ),
+          estimatedDrivingMinutes: Number(
+            stop.estimatedDrivingMinutes ?? stop.estimated_driving_minutes ?? 0,
+          ),
+          estimated_driving_minutes: Number(
+            stop.estimated_driving_minutes ?? stop.estimatedDrivingMinutes ?? 0,
+          ),
+          waitMinutesBeforeStop: Number(
+            stop.waitMinutesBeforeStop ?? stop.wait_minutes_before_stop ?? 0,
+          ),
+          wait_minutes_before_stop: Number(
+            stop.wait_minutes_before_stop ?? stop.waitMinutesBeforeStop ?? 0,
+          ),
+        }))
+      : [],
+  };
+};
+
+const getStopArrivalTime = (bus: Bus, stopIndex: number) => {
+  const stop = bus.stops?.[stopIndex];
+
+  if (stop?.estimatedArrivalTime && stop.estimatedArrivalTime !== "--:--") {
+    return formatTime(stop.estimatedArrivalTime);
+  }
+
+  if (stop?.estimated_arrival_time && stop.estimated_arrival_time !== "--:--") {
+    return formatTime(stop.estimated_arrival_time);
+  }
+
+  return "--:--";
+};
 
 export default function BookRideScreen() {
   const params = useLocalSearchParams();
+
   const studentId =
     typeof params.studentId === "string" ? Number(params.studentId) : 0;
-  const [selectedDay, setSelectedDay] = useState<DayKey>("Today");
+
+  const dateOptions = useMemo(() => buildDateOptions(), []);
+
+  const [selectedDate, setSelectedDate] = useState<string>(
+    dateOptions[0]?.value || formatDateValue(new Date()),
+  );
+
+  const [selectedStopId, setSelectedStopId] = useState<number | null>(null);
   const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
 
@@ -62,20 +231,33 @@ export default function BookRideScreen() {
   const [loadingBuses, setLoadingBuses] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
-  const dayOptions: DayKey[] = ["Today", "Tomorrow", "Saturday", "Sunday"];
-
   const selectedBus = useMemo(() => {
     return buses.find((bus) => bus.id === selectedBusId) ?? null;
   }, [buses, selectedBusId]);
 
+  const selectedStopIndex = useMemo(() => {
+    if (!selectedBus || !selectedStopId) {
+      return -1;
+    }
+
+    return selectedBus.stops.findIndex((stop) => stop.id === selectedStopId);
+  }, [selectedBus, selectedStopId]);
+
+  const selectedStopArrivalTime =
+    selectedBus && selectedStopIndex >= 0
+      ? getStopArrivalTime(selectedBus, selectedStopIndex)
+      : "";
+
   const mapBuses = selectedBus ? [selectedBus] : buses;
 
-  const fetchBuses = async (day: DayKey, area: string = "") => {
+  const fetchBuses = async (date: string, area: string = "") => {
     try {
       setLoadingBuses(true);
       setFetchError("");
 
-      const url = `${API_BASE}/get_buses.php?day=${encodeURIComponent(day)}&area=${encodeURIComponent(area)}`;
+      const url = `${API_BASE}/get_buses.php?date=${encodeURIComponent(
+        date,
+      )}&area=${encodeURIComponent(area)}`;
 
       const response = await fetch(url, {
         headers: {
@@ -86,6 +268,7 @@ export default function BookRideScreen() {
       const text = await response.text();
 
       let data: any;
+
       try {
         data = JSON.parse(text);
       } catch {
@@ -98,12 +281,7 @@ export default function BookRideScreen() {
 
       const fetchedBuses = Array.isArray(data.buses) ? data.buses : [];
 
-      setBuses(
-        fetchedBuses.map((bus: any) => ({
-          ...bus,
-          ridePrice: FIXED_RIDE_PRICE,
-        })),
-      );
+      setBuses(fetchedBuses.map(normalizeBus));
     } catch (error: any) {
       setBuses([]);
       setFetchError(error?.message || "Could not load buses.");
@@ -113,12 +291,13 @@ export default function BookRideScreen() {
   };
 
   useEffect(() => {
-    fetchBuses(selectedDay, searchText);
-  }, [selectedDay]);
+    fetchBuses(selectedDate, searchText.trim());
+  }, [selectedDate]);
 
   const handleSearch = async () => {
     setSelectedBusId(null);
-    await fetchBuses(selectedDay, searchText.trim());
+    setSelectedStopId(null);
+    await fetchBuses(selectedDate, searchText.trim());
   };
 
   const handleSelectBus = (bus: Bus) => {
@@ -126,11 +305,14 @@ export default function BookRideScreen() {
       Alert.alert("Bus Full", "This bus is already full.");
       return;
     }
+
     setSelectedBusId(bus.id);
+    setSelectedStopId(null);
   };
 
   const clearSelectedBus = () => {
     setSelectedBusId(null);
+    setSelectedStopId(null);
   };
 
   const handleConfirmBooking = async () => {
@@ -141,6 +323,11 @@ export default function BookRideScreen() {
 
     if (!studentId) {
       Alert.alert("Missing student ID", "Please log in again.");
+      return;
+    }
+
+    if (!selectedStopId) {
+      Alert.alert("Select a stop", "Please choose where you will wait.");
       return;
     }
 
@@ -156,13 +343,15 @@ export default function BookRideScreen() {
         body: JSON.stringify({
           student_id: studentId,
           bus_id: selectedBus.id,
-          booking_day: selectedDay,
+          booking_date: selectedDate,
+          stop_id: selectedStopId,
         }),
       });
 
       const raw = await response.text();
 
       let data: any;
+
       try {
         data = JSON.parse(raw);
       } catch {
@@ -170,12 +359,21 @@ export default function BookRideScreen() {
       }
 
       if (data.success) {
+        const pickupTime =
+          formatTime(data.estimated_pickup_time) ||
+          selectedStopArrivalTime ||
+          "--:--";
+
         Alert.alert(
-          "Booking Confirmed",
-          `Your seat on ${selectedBus.busNumber} has been booked successfully for ${selectedBus.ridePrice} credit.`,
+          "Booking Pending",
+          `Your seat on ${selectedBus.busNumber} has been reserved for ${formatReadableDate(
+            selectedDate,
+          )}. Estimated pickup time: ${pickupTime}. Payment will be deducted when your card is scanned on the bus.`,
         );
+
         setSelectedBusId(null);
-        await fetchBuses(selectedDay, searchText.trim());
+        setSelectedStopId(null);
+        await fetchBuses(selectedDate, searchText.trim());
       } else {
         Alert.alert("Booking Failed", data.message || "Something went wrong.");
       }
@@ -186,15 +384,15 @@ export default function BookRideScreen() {
     }
   };
 
+  const firstBusWithLocation = mapBuses.find(
+    (bus) =>
+      bus.currentLocation?.latitude !== null &&
+      bus.currentLocation?.longitude !== null,
+  );
+
   const initialMapRegion = {
-    latitude:
-      mapBuses[0]?.currentLocation?.latitude ??
-      buses[0]?.currentLocation?.latitude ??
-      33.8938,
-    longitude:
-      mapBuses[0]?.currentLocation?.longitude ??
-      buses[0]?.currentLocation?.longitude ??
-      35.5018,
+    latitude: firstBusWithLocation?.currentLocation?.latitude ?? 33.8938,
+    longitude: firstBusWithLocation?.currentLocation?.longitude ?? 35.5018,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
@@ -207,7 +405,7 @@ export default function BookRideScreen() {
         <View>
           <Text style={styles.headerTitle}>Book a Ride</Text>
           <Text style={styles.headerSubtitle}>
-            Search nearest stop, view routes, and pick a bus
+            Pick a date, choose a route, and select your stop
           </Text>
         </View>
 
@@ -217,27 +415,39 @@ export default function BookRideScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.dateSectionTitle}>Select Date</Text>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dayTabs}
         >
-          {dayOptions.map((day) => {
-            const active = day === selectedDay;
+          {dateOptions.map((dateOption) => {
+            const active = dateOption.value === selectedDate;
 
             return (
               <Pressable
-                key={day}
+                key={dateOption.value}
                 style={[styles.dayTab, active && styles.dayTabActive]}
                 onPress={() => {
-                  setSelectedDay(day);
+                  setSelectedDate(dateOption.value);
                   setSelectedBusId(null);
+                  setSelectedStopId(null);
                 }}
               >
                 <Text
                   style={[styles.dayTabText, active && styles.dayTabTextActive]}
                 >
-                  {day}
+                  {dateOption.label}
+                </Text>
+
+                <Text
+                  style={[
+                    styles.dateTabText,
+                    active && styles.dateTabTextActive,
+                  ]}
+                >
+                  {dateOption.value}
                 </Text>
               </Pressable>
             );
@@ -269,8 +479,8 @@ export default function BookRideScreen() {
 
         <View style={styles.mapHeaderRow}>
           <View>
-            <Text style={styles.sectionTitle}>Map</Text>
-            <Text style={styles.sectionSubtitle}>
+            <Text style={styles.sectionTitleLight}>Map</Text>
+            <Text style={styles.sectionSubtitleLight}>
               {selectedBus
                 ? `Showing ${selectedBus.busNumber} route only`
                 : "Showing all buses, routes, and stops"}
@@ -296,21 +506,32 @@ export default function BookRideScreen() {
                   />
                 )}
 
-                <Marker
-                  coordinate={bus.currentLocation}
-                  title={bus.busNumber}
-                  description={`${bus.routeName} | Driver: ${bus.driverName}`}
-                />
+                {bus.currentLocation?.latitude !== null &&
+                  bus.currentLocation?.longitude !== null && (
+                    <Marker
+                      coordinate={{
+                        latitude: bus.currentLocation.latitude,
+                        longitude: bus.currentLocation.longitude,
+                      }}
+                      title={bus.busNumber}
+                      description={`${bus.routeName} | ${formatTime(
+                        bus.routeStartTime,
+                      )} - ${formatTime(bus.routeEndTime)}`}
+                    />
+                  )}
 
-                {bus.stops.map((stop) => (
+                {bus.stops?.map((stop, index) => (
                   <Marker
-                    key={stop.id}
+                    key={`${bus.id}-${stop.id}`}
                     coordinate={{
                       latitude: stop.latitude,
                       longitude: stop.longitude,
                     }}
                     title={stop.name}
-                    description={`Stop on ${bus.busNumber}`}
+                    description={`Estimated arrival: ${getStopArrivalTime(
+                      bus,
+                      index,
+                    )} on ${bus.busNumber}`}
                     pinColor="green"
                   />
                 ))}
@@ -320,9 +541,9 @@ export default function BookRideScreen() {
         </View>
 
         <View style={styles.listHeader}>
-          <Text style={styles.sectionTitle}>Available Buses</Text>
-          <Text style={styles.sectionSubtitle}>
-            Tap a bus to focus only on its route
+          <Text style={styles.sectionTitleLight}>Available Buses</Text>
+          <Text style={styles.sectionSubtitleLight}>
+            {formatReadableDate(selectedDate)}
           </Text>
         </View>
 
@@ -340,7 +561,7 @@ export default function BookRideScreen() {
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No buses found</Text>
             <Text style={styles.emptyText}>
-              No buses matched your selected day or area search.
+              No buses matched your selected date or area search.
             </Text>
           </View>
         ) : (
@@ -382,6 +603,18 @@ export default function BookRideScreen() {
                   </View>
                 </View>
 
+                <View style={styles.timeBox}>
+                  <Text style={styles.timeLabel}>Route Time</Text>
+                  <Text style={styles.timeValue}>
+                    {formatTime(bus.routeStartTime)} -{" "}
+                    {formatTime(bus.routeEndTime)}
+                  </Text>
+                  <Text style={styles.timeSubValue}>
+                    Estimated arrivals use the saved road route plus a{" "}
+                    {STOP_WAIT_MINUTES}-minute wait at each previous stop.
+                  </Text>
+                </View>
+
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Driver</Text>
                   <Text style={styles.infoValue}>{bus.driverName}</Text>
@@ -398,12 +631,20 @@ export default function BookRideScreen() {
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Price</Text>
                   <Text style={styles.infoValue}>{bus.ridePrice} credit</Text>
+                  <Text style={styles.infoSubValue}>
+                    Paid when card is scanned
+                  </Text>
                 </View>
 
                 <View style={styles.infoBlock}>
                   <Text style={styles.infoLabel}>Stops</Text>
                   <Text style={styles.infoSubValue}>
-                    {bus.stops.map((stop) => stop.name).join(" • ")}
+                    {bus.stops
+                      .map(
+                        (stop, index) =>
+                          `${stop.name} (${getStopArrivalTime(bus, index)})`,
+                      )
+                      .join(" • ")}
                   </Text>
                 </View>
               </Pressable>
@@ -415,29 +656,123 @@ export default function BookRideScreen() {
           <View style={styles.confirmContainer}>
             <View style={styles.selectedSummaryCard}>
               <Text style={styles.selectedSummaryTitle}>Selected Bus</Text>
+
               <Text style={styles.selectedSummaryText}>
                 {selectedBus.busNumber} • {selectedBus.driverName}
               </Text>
+
+              <Text style={styles.selectedSummaryText}>
+                Date: {formatReadableDate(selectedDate)}
+              </Text>
+
+              <Text style={styles.selectedSummaryText}>
+                Route time: {formatTime(selectedBus.routeStartTime)} -{" "}
+                {formatTime(selectedBus.routeEndTime)}
+              </Text>
+
               <Text style={styles.selectedSummaryText}>
                 {selectedBus.bookedSeats}/{selectedBus.capacity} seats booked
               </Text>
+
               <Text style={styles.selectedSummaryText}>
-                Price: {selectedBus.ridePrice} credit
+                Price: {selectedBus.ridePrice} credit • paid on card scan
               </Text>
+
+              {selectedStopArrivalTime ? (
+                <Text style={styles.selectedSummaryText}>
+                  Selected pickup estimate: {selectedStopArrivalTime}
+                </Text>
+              ) : null}
+            </View>
+
+            <View style={styles.stopsCard}>
+              <Text style={styles.stopsTitle}>Select Your Stop</Text>
+
+              <Text style={styles.stopsHelpText}>
+                Times below are based on the road route distance plus a{" "}
+                {STOP_WAIT_MINUTES}-minute wait at each previous stop.
+              </Text>
+
+              {selectedBus.stops.map((stop, index) => {
+                const isSelected = selectedStopId === stop.id;
+                const arrivalTime = getStopArrivalTime(selectedBus, index);
+
+                return (
+                  <Pressable
+                    key={stop.id}
+                    style={[
+                      styles.stopItem,
+                      isSelected && styles.stopItemSelected,
+                    ]}
+                    onPress={() => setSelectedStopId(stop.id)}
+                  >
+                    <View style={styles.stopRow}>
+                      <View style={styles.stopTextBox}>
+                        <Text
+                          style={[
+                            styles.stopText,
+                            isSelected && styles.stopTextSelected,
+                          ]}
+                        >
+                          {stop.name}
+                        </Text>
+
+                        <Text
+                          style={[
+                            styles.stopSubText,
+                            isSelected && styles.stopSubTextSelected,
+                          ]}
+                        >
+                          Estimated arrival
+                        </Text>
+
+                        <Text
+                          style={[
+                            styles.stopDetailText,
+                            isSelected && styles.stopSubTextSelected,
+                          ]}
+                        >
+                          Drive: {stop.estimatedDrivingMinutes || 0} min • Wait
+                          before: {stop.waitMinutesBeforeStop || 0} min
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.arrivalBadge,
+                          isSelected && styles.arrivalBadgeSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.arrivalBadgeText,
+                            isSelected && styles.arrivalBadgeTextSelected,
+                          ]}
+                        >
+                          {arrivalTime}
+                        </Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
 
             <Pressable
               style={[
                 styles.confirmButton,
-                loadingBooking && styles.confirmButtonDisabled,
+                (loadingBooking || !selectedStopId) &&
+                  styles.confirmButtonDisabled,
               ]}
               onPress={handleConfirmBooking}
-              disabled={loadingBooking}
+              disabled={loadingBooking || !selectedStopId}
             >
               <Text style={styles.confirmButtonText}>
                 {loadingBooking
                   ? "Confirming..."
-                  : `Confirm Booking (${selectedBus.busNumber} • ${selectedBus.ridePrice} credit)`}
+                  : selectedStopArrivalTime
+                    ? `Reserve Seat • Pickup ${selectedStopArrivalTime}`
+                    : `Reserve Seat (${selectedBus.busNumber} • pay on scan)`}
               </Text>
             </Pressable>
           </View>
@@ -484,25 +819,41 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 30,
   },
+  dateSectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
   dayTabs: {
     paddingBottom: 14,
   },
   dayTab: {
     backgroundColor: "#182235",
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
     marginRight: 10,
+    minWidth: 110,
   },
   dayTabActive: {
     backgroundColor: "#FFFFFF",
   },
   dayTabText: {
     color: "#D1D5DB",
-    fontWeight: "700",
+    fontWeight: "800",
   },
   dayTabTextActive: {
     color: "#111827",
+  },
+  dateTabText: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  dateTabTextActive: {
+    color: "#374151",
   },
   searchCard: {
     backgroundColor: "#FFFFFF",
@@ -548,6 +899,16 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     color: "#6B7280",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  sectionTitleLight: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  sectionSubtitleLight: {
+    color: "#AAB4C3",
     fontSize: 13,
     marginTop: 4,
   },
@@ -650,6 +1011,29 @@ const styles = StyleSheet.create({
   fullText: {
     color: "#991B1B",
   },
+  timeBox: {
+    backgroundColor: "#EFF6FF",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
+  timeLabel: {
+    color: "#1D4ED8",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  timeValue: {
+    color: "#111827",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  timeSubValue: {
+    color: "#374151",
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 18,
+  },
   infoBlock: {
     marginBottom: 10,
   },
@@ -703,5 +1087,81 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+  },
+  stopsCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+  },
+  stopsTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 6,
+    color: "#111827",
+  },
+  stopsHelpText: {
+    color: "#6B7280",
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  stopItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    marginBottom: 8,
+  },
+  stopItemSelected: {
+    backgroundColor: "#1D4ED8",
+  },
+  stopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  stopTextBox: {
+    flex: 1,
+  },
+  stopText: {
+    color: "#111827",
+    fontWeight: "800",
+  },
+  stopTextSelected: {
+    color: "#FFFFFF",
+  },
+  stopSubText: {
+    color: "#64748B",
+    fontSize: 12,
+    marginTop: 3,
+    fontWeight: "600",
+  },
+  stopSubTextSelected: {
+    color: "#DBEAFE",
+  },
+  stopDetailText: {
+    color: "#64748B",
+    fontSize: 11,
+    marginTop: 3,
+    fontWeight: "600",
+  },
+  arrivalBadge: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  arrivalBadgeSelected: {
+    backgroundColor: "#DBEAFE",
+  },
+  arrivalBadgeText: {
+    color: "#1D4ED8",
+    fontWeight: "900",
+    fontSize: 13,
+  },
+  arrivalBadgeTextSelected: {
+    color: "#1D4ED8",
   },
 });
