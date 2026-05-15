@@ -469,7 +469,19 @@ export default function DashboardScreen() {
             >
               <Text style={styles.menuItemText}>Alerts</Text>
             </Pressable>
-
+            <Pressable
+              style={styles.rechargeButton}
+              onPress={() =>
+                router.push({
+                  pathname: "/recharge",
+                  params: {
+                    studentId: String(studentId),
+                  },
+                })
+              }
+            >
+              <Text style={styles.rechargeButtonText}>Recharge Credits</Text>
+            </Pressable>
             <Pressable style={styles.menuItemLogout} onPress={handleLogout}>
               <Text style={styles.menuItemLogoutText}>Logout</Text>
             </Pressable>
@@ -784,5 +796,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "800",
     color: "#1D4ED8",
+  },
+  rechargeButton: {
+    backgroundColor: "#1D4ED8",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    marginTop: 12,
+  },
+
+  rechargeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
   },
 });
